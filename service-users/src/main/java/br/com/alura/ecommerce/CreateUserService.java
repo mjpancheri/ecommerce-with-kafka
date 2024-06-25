@@ -15,9 +15,12 @@ public class CreateUserService {
     CreateUserService() throws SQLException {
         String url = "jdbc:sqlite:target/users_database.db";
         this.connection = DriverManager.getConnection(url);
-        connection.createStatement().execute("create table if not exists users (uuid varchar(200) primary key, email varchar)");
-
+        try (var stmt = connection.createStatement()) {
+            stmt.execute("create table if not exists " +
+                    "users (uuid varchar(200) primary key, email varchar)");
+        }
     }
+
     public static void main(String[] args) throws SQLException {
         var userService = new CreateUserService();
         try (var service = new KafkaService<>(CreateUserService.class.getSimpleName(),
@@ -52,10 +55,11 @@ public class CreateUserService {
     }
 
     private boolean isNewUser(String email) throws SQLException {
-        var exists = connection.prepareStatement("select uuid from users where email = ? limit 1");
-        exists.setString(1, email);
-        var results = exists.executeQuery();
+        try (var exists = connection.prepareStatement("select uuid from users where email = ? limit 1")) {
+            exists.setString(1, email);
+            var results = exists.executeQuery();
 
-        return !results.next();
+            return !results.next();
+        }
     }
 }
